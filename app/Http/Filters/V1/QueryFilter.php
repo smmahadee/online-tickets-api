@@ -1,0 +1,69 @@
+<?php
+
+namespace App\Http\Filters\V1;
+
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
+
+class QueryFilter
+{
+    protected Builder $builder;
+    protected array $sortable = [];
+
+    function __construct(protected Request $request)
+    {
+        //
+    }
+
+    public function apply(Builder $builder): Builder
+    {
+        $this->builder = $builder;
+
+        foreach ($this->request->all() as $key => $value) {
+            if (method_exists($this, $key)) {
+                $this->$key($value);
+            }
+        }
+
+        return $builder;
+    }
+
+    public function filter(array $arr): Builder
+    {
+        foreach ($arr as $key => $value) {
+            if (method_exists($this, $key)) {
+                $this->$key($value);
+            }
+        }
+
+        return $this->builder;
+    }
+
+    public function sort(string $value): Builder
+    {
+        $sortAttributes = explode(',', $value);
+        $direction = 'asc';
+
+        foreach ($sortAttributes as $sortAttribute) {
+            if (str_starts_with($sortAttribute, '-')) {
+                $direction = 'desc';
+            }
+
+            $sortAttribute = ltrim($sortAttribute, '-');
+
+            if (!in_array($sortAttribute, $this->sortable) && !array_key_exists($sortAttribute, $this->sortable)) {
+                continue;
+            }
+
+            $columnName = $this->sortable[$sortAttribute] ?? null;
+
+            if ($columnName === null) {
+                $columnName = $sortAttribute;
+            }
+
+            $this->builder->orderBy($columnName, $direction);
+        }
+
+        return $this->builder;
+    }
+}

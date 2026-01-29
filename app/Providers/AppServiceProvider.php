@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +20,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Gate::guessPolicyNamesUsing(function (string $modelClass) {
+            $model = class_basename($modelClass);
+
+            $versionedPolicy = "App\\Policies\\V1\\{$model}Policy";
+            if (class_exists($versionedPolicy)) {
+                return $versionedPolicy;
+            }
+
+            return "App\\Policies\\{$model}Policy";
+        });
     }
 }
